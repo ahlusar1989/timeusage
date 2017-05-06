@@ -62,15 +62,20 @@ object TimeUsage {
     *         have type Double. None of the fields are nullable.
     * @param columnNames Column names of the DataFrame
     */
-  def dfSchema(columnNames: List[String]): StructType =
-    ???
+  def dfSchema(columnNames: List[String]): StructType = {
+    val first = StructField(columnNames.head, StringType, nullable = false)
+    val restOfFields = columnNames.tail.map(field => StructField(field, DoubleType, nullable = false))
+    StructType(first::restOfFields)
+  }
 
 
   /** @return An RDD Row compatible with the schema produced by `dfSchema`
     * @param line Raw fields
     */
-  def row(line: List[String]): Row =
-    ???
+  def row(line: List[String]): Row = {
+    val list = line.head :: line.tail.map(_.toDouble)
+    Row.fromSeq(list)
+  }
 
   /** @return The initial data frame columns partitioned in three groups: primary needs (sleeping, eating, etc.),
     *         work and other (leisure activities)
@@ -87,8 +92,42 @@ object TimeUsage {
     * 3. other activities (leisure). These are the columns starting with “t02”, “t04”, “t06”, “t07”, “t08”, “t09”,
     *    “t10”, “t12”, “t13”, “t14”, “t15”, “t16” and “t18” (those which are not part of the previous groups only).
     */
+
+  def classifyColumnsUtil(
+                           columnNames: List[String],
+                           primary: List[Column],
+                           working: List[Column],
+                           leisure: List[Column]):
+                          (List[Column], List[Column], List[Column]
+      ) =  columnNames match {
+      case Nil => (primary, working, leisure)
+      case x::xs =>
+        if (x.startsWith("t01") || x.startsWith("t03") ||
+          x.startsWith("t11") || x.startsWith("t1801")
+          || x.startsWith("t1803"))
+          classifyColumnsUtil(xs,  col(x)::primary, working, leisure)
+        else if (x.startsWith("t05") || x.startsWith("t1805"))
+          classifyColumnsUtil(xs, primary, col(x)::working, leisure)
+        else if (x.startsWith("t02") || x.startsWith("t04")
+          || x.startsWith("t06") || x.startsWith("t07")
+          || x.startsWith("t08") || x.startsWith("t09")
+          || x.startsWith("t10") || x.startsWith("t12")
+          || x.startsWith("t13") || x.startsWith("t14")
+          || x.startsWith("t15") || x.startsWith("t16")
+          || x.startsWith("t18"))
+          classifyColumnsUtil(xs, primary, working,  col(x)::leisure)
+        else
+          classifyColumnsUtil(xs, primary, working, leisure)
+    }
+
+
   def classifiedColumns(columnNames: List[String]): (List[Column], List[Column], List[Column]) = {
-    ???
+    val primary = List[Column]()
+    val working = List[Column]()
+    val leisure = List[Column]()
+
+    classifyColumnsUtil(columnNames, primary, working, leisure)
+
   }
 
   /** @return a projection of the initial DataFrame such that all columns containing hours spent on primary needs
@@ -119,7 +158,7 @@ object TimeUsage {
     *
     * Finally, the resulting DataFrame should exclude people that are not employable (ie telfs = 5).
     *
-    * Note that the initial DataFrame contains time in ''minutes''. You have to convert it into ''hours''.
+    * Note that the initial DataFrame contains time in ''minutes''. I had to convert it into ''hours''.
     */
   def timeUsageSummary(
     primaryNeedsColumns: List[Column],
@@ -127,9 +166,11 @@ object TimeUsage {
     otherColumns: List[Column],
     df: DataFrame
   ): DataFrame = {
-    val workingStatusProjection: Column = ???
-    val sexProjection: Column = ???
-    val ageProjection: Column = ???
+    val workingStatusProjection: Column = when(df("telfs") < 3, "working").otherwise("not working").as("working")
+    val sexProjection: Column = when(df("tesex") == 1, "male").otherwise("female").as("sex")
+    val ageProjection: Column = when(df("teage") >= 15 && df("teage") <= 22 , "young").
+      when(df("teage") >= 23 && df("teage") <= 55 , "active").
+      otherwise("elder").as("age")
 
     val primaryNeedsProjection: Column = ???
     val workProjection: Column = ???
