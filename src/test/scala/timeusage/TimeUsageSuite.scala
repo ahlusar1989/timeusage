@@ -89,7 +89,7 @@ class TimeUsageSuite extends FunSuite with BeforeAndAfterAll {
   test("timeUsageSummaryTyped"){
     assert(summaryDs.head.getClass.getName === "timeusage.TimeUsageRow")
     assert(summaryDs.head.other === 8.75)
-    assert(summaryDs.count === 6872)
+    assert(summaryDs.count === 114997)
     summaryDs.show()
   }
 

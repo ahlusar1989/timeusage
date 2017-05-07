@@ -248,14 +248,12 @@ object TimeUsage {
     * @param viewName Name of the SQL view to use
     */
   def timeUsageGroupedSqlQuery(viewName: String): String =
-    "SELECT working, sex, age, ROUND(AVG(primaryNeeds), 1) AS " +
-      "primaryNeeds, " +
-      "ROUND(AVG(work), 1) AS work, " +
-      "ROUND(AVG(other), 1) AS other " +
-      "FROM " + viewName + " " +
-      "GROUP BY working, sex, age " +
-      "ORDER BY working, sex, age"
-
+    s"SELECT working, sex, age, ROUND(AVG(primaryNeeds),1) " +
+      s"as primaryNeeds, ROUND(AVG(work),1) as work,  " +
+      s"ROUND(AVG(other),1) as other " +
+      s"FROM $viewName " +
+      s"GROUP BY working, sex, age " +
+      s"ORDER BY working, sex, age"
   /**
     * @return A `Dataset[TimeUsageRow]` from the “untyped” `DataFrame`
     * @param timeUsageSummaryDf `DataFrame` returned by the `timeUsageSummary` method
@@ -279,14 +277,22 @@ object TimeUsage {
     *
     * used the `groupByKey` and `typed.avg` methods.
     */
+
   def timeUsageGroupedTyped(summed: Dataset[TimeUsageRow]): Dataset[TimeUsageRow] = {
-    import org.apache.spark.sql.expressions.scalalang.typed
-    summed.groupByKey(r => (r.working, r.sex, r.age))
-      .agg(round(typed.avg[TimeUsageRow](_.primaryNeeds), 1).as(Encoders.DOUBLE),
-        round(typed.avg[TimeUsageRow](_.work), 1).as(Encoders.DOUBLE),
-        round(typed.avg[TimeUsageRow](_.other), 1).as(Encoders.DOUBLE))
-      .map(k => TimeUsageRow(k._1._1, k._1._2, k._1._3, k._2, k._3, k._4))
-      .sort($"working", $"sex", $"age")
+    import org.apache.spark.sql.expressions.scalalang.typed.avg
+
+    def roundByUtility(d:Double) = (d * 10).round / 10d
+
+    summed
+      .groupByKey(row => (row.working, row.sex, row.age))
+      .agg(
+        avg(_.primaryNeeds),
+        avg(_.work),
+        avg(_.other)
+      ).map {
+      case ((working, sex, age), primaryNeeds, work, other) => TimeUsageRow(working, sex, age,  roundByUtility(primaryNeeds), roundByUtility(work), roundByUtility(other))
+    }.orderBy('working, 'sex, 'age)
+
   }
 }
 
