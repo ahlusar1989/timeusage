@@ -76,13 +76,13 @@ class TimeUsageSuite extends FunSuite with BeforeAndAfterAll {
 
   test("timeUsageGrouped"){
     assert(finalDf.count === 2*2*3)
-    assert(finalDf.head.getDouble(3) === 12.3)
+    assert(finalDf.head.getDouble(3) === 12.4)
     finalDf.show()
   }
 
   test("timeUsageGroupedSql"){
     assert(sqlDf.count === 2*2*3)
-    assert(sqlDf.head.getDouble(3) === 12.3)
+    assert(sqlDf.head.getDouble(3) === 12.4)
     sqlDf.show()
   }
 
@@ -95,8 +95,8 @@ class TimeUsageSuite extends FunSuite with BeforeAndAfterAll {
 
   test("timeUsageGroupedTyped"){
     assert(finalDs.count === 2*2*3)
-    assert(finalDs.head.primaryNeeds === 12.3)
-    assert(finalDs.head.primaryNeeds === 12.3)
+    assert(finalDs.head.primaryNeeds === 12.4)
+    assert(finalDs.head.primaryNeeds === 12.4)
     finalDs.show()
   }
 }
