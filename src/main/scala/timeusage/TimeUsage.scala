@@ -290,7 +290,11 @@ object TimeUsage {
         avg(_.work),
         avg(_.other)
       ).map {
-      case ((working, sex, age), primaryNeeds, work, other) => TimeUsageRow(working, sex, age,  roundByUtility(primaryNeeds), roundByUtility(work), roundByUtility(other))
+      case ((working, sex, age), primaryNeeds, work, other) =>
+        TimeUsageRow(working, sex, age,
+          roundByUtility(primaryNeeds),
+          roundByUtility(work),
+          roundByUtility(other))
     }.orderBy('working, 'sex, 'age)
 
   }

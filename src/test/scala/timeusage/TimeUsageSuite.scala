@@ -97,5 +97,6 @@ class TimeUsageSuite extends FunSuite with BeforeAndAfterAll {
     assert(finalDs.count === 2*2*3)
     assert(finalDs.head.primaryNeeds === 12.3)
     assert(finalDs.head.primaryNeeds === 12.3)
+    finalDs.show()
   }
 }
