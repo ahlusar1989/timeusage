@@ -166,21 +166,42 @@ object TimeUsage {
     otherColumns: List[Column],
     df: DataFrame
   ): DataFrame = {
-    val workingStatusProjection: Column = when(df("telfs") < 3, "working").otherwise("not working").as("working")
-    val sexProjection: Column = when(df("tesex") === 1, "male").otherwise("female").as("sex")
-    val ageProjection: Column = when(df("teage") >= 15 && df("teage") <= 22 , "young").
-      when(df("teage") >= 23 && df("teage") <= 55 , "active").
-      otherwise("elder").as("age")
 
-    def sumUtility(groupedColumns: List[Column], resultingSum: Column): Column = groupedColumns match {
-      case Nil => resultingSum
-      case head::xs => sumUtility(xs, resultingSum + df(head.toString()))
+    val workingStatusProjection: Column = {
+      when('telfs >= 1.0 && 'telfs < 3.0, "working")
+        .otherwise("not working")
+        .as("working")
     }
 
-    val primaryNeedsProjection: Column = (sumUtility(primaryNeedsColumns, lit(0.0d)) / 60.0).as("primaryNeeds")
-    val workProjection: Column = (sumUtility(primaryNeedsColumns, lit(0.0d)) / 60.0).as("work")
-    val otherProjection: Column =  (sumUtility(primaryNeedsColumns, lit(0.0d)) / 60.0).as("other")
-
+    val sexProjection: Column = {
+      when('tesex === 1.0, "male")
+        .otherwise("female")
+        .as("sex")
+    }
+    val ageProjection: Column = {
+      when('teage.between(15.0, 22.0), "young")
+        .when('teage.between(23.0, 55.0), "active")
+        .otherwise("elder")
+        .as("age")
+    }
+    val primaryNeedsProjection: Column = {
+      primaryNeedsColumns
+        .reduce(_ + _)
+        .divide(60)
+        .as("primaryNeeds")
+    }
+    val workProjection: Column = {
+      workColumns
+        .reduce(_ + _)
+        .divide(60)
+        .as("work")
+    }
+    val otherProjection: Column = {
+      otherColumns
+        .reduce(_ + _)
+        .divide(60)
+        .as("other")
+    }
     df
       .select(workingStatusProjection, sexProjection, ageProjection, primaryNeedsProjection, workProjection, otherProjection)
       .where($"telfs" <= 4) // Discard people who are not in labor force
@@ -204,15 +225,13 @@ object TimeUsage {
     * Finally, the resulting DataFrame should be sorted by working status, sex and age.
     */
   def timeUsageGrouped(summed: DataFrame): DataFrame = {
-    val result = summed.select($"working", $"sex", $"age", $"primaryNeeds", $"work", $"other")
+    summed.select($"working", $"sex", $"age", $"primaryNeeds", $"work", $"other")
       .groupBy($"working", $"sex", $"age")
       .agg(
         round(avg($"primaryNeeds"), 1).as("primaryNeeds"),
         round(avg($"work"), 1).as("work"),
         round(avg($"other"), 1).as("other")
       ).sort($"working", $"sex", $"age")
-
-    result
   }
 
   /**
@@ -230,8 +249,9 @@ object TimeUsage {
     */
   def timeUsageGroupedSqlQuery(viewName: String): String =
     "SELECT working, sex, age, ROUND(AVG(primaryNeeds), 1) AS " +
-      "primaryNeeds, ROUND(AVG(work), 1)" +
-      " AS work, ROUND(AVG(other), 1) AS other " +
+      "primaryNeeds, " +
+      "ROUND(AVG(work), 1) AS work, " +
+      "ROUND(AVG(other), 1) AS other " +
       "FROM " + viewName + " " +
       "GROUP BY working, sex, age " +
       "ORDER BY working, sex, age"
@@ -244,13 +264,7 @@ object TimeUsage {
     * cast them at the same time.
     */
   def timeUsageSummaryTyped(timeUsageSummaryDf: DataFrame): Dataset[TimeUsageRow] = {
-    timeUsageSummaryDf.map(
-      r => TimeUsageRow(r.getAs("working"),
-      r.getAs("sex"), r.getAs("age"),
-        r.getAs("primaryNeeds"),
-        r.getAs("work"),
-        r.getAs("other"))
-    )
+    timeUsageSummaryDf.as[TimeUsageRow]
   }
 
 

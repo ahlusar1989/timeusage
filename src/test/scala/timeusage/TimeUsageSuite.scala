@@ -69,7 +69,7 @@ class TimeUsageSuite extends FunSuite with BeforeAndAfterAll {
 
   test("timeUsageSummary"){
     assert(summaryDf.columns.length === 6)
-    assert(summaryDf.count === 170842)
+    assert(summaryDf.count === 114997)
     summaryDf.show()
   }
 
